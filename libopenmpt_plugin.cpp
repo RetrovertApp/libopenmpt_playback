@@ -16,7 +16,7 @@
 
 const int MAX_EXT_COUNT = 16 * 1024;
 static char s_supported_extensions[MAX_EXT_COUNT];
-const char* PLUGIN_NAME = "openmpt";
+const char* PLUGIN_NAME = "libopenmpt";
 
 const RVIoAPI* g_io_api = nullptr;
 RVLogAPI* g_rv_log = nullptr;
@@ -347,20 +347,6 @@ static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_ou
         }
     }
 
-    // Send current positions back to frontend if we have some more data
-    /*
-    if (gen_count > 0) {
-        flatbuffers::FlatBufferBuilder builder(1024);
-        builder.Finish(CreateRVMessageDirect(
-            builder, MessageType_current_position,
-            CreateRVCurrentPosition(builder, replayer_data->mod->get_position_seconds(),
-                                       replayer_data->mod->get_current_pattern(), replayer_data->mod->get_current_row(),
-                                       replayer_data->mod->get_current_speed(), replayer_data->length)
-                .Union()));
-        RVMessageAPI_send(replayer_data->message_api, builder.GetBufferPointer(), builder.GetSize());
-    }
-    */
-
     return RVReadInfo{sample_rate, gen_count, channel_count, RVOutputType_f32};
 }
 
@@ -372,7 +358,7 @@ static int openmpt_seek(void* user_data, int ms) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const char* filename_from_path(const char* path) {
+static const char* filename_from_path(const char* path) {
     for (size_t i = strlen(path) - 1; i > 0; i--) {
         if (path[i] == '/') {
             return &path[i + 1];
@@ -496,7 +482,7 @@ static RVPlaybackPlugin s_openmpt_plugin = {
     RV_PLAYBACK_PLUGIN_API_VERSION,
     PLUGIN_NAME,
     "0.0.2",
-    "libopenmpt SVN 2021-05-01",
+    "libopenmpt 0.6.2",
     openmpt_probe_can_play,
     openmpt_supported_extensions,
     openmpt_create,
