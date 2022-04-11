@@ -1,12 +1,17 @@
 #include <libopenmpt/libopenmpt.h>
 #include <libopenmpt/libopenmpt.hpp>
 
-#include "retrovert_api/c/retrovert/rv_io.h"
-#include "retrovert_api/c/retrovert/rv_log.h"
-#include "retrovert_api/c/retrovert/rv_metadata.h"
-#include "retrovert_api/c/retrovert/rv_playback_plugin.h"
-#include "retrovert_api/c/retrovert/rv_service.h"
-#include "retrovert_api/c/retrovert/rv_settings.h"
+#include <retrovert/gen/io.h>
+#include <retrovert/gen/log.h>
+#include <retrovert/gen/metadata.h>
+#include <retrovert/gen/playback.h>
+#include <retrovert/gen/service.h>
+#include <retrovert/gen/settings.h>
+//#include "retrovert_api/c/retrovert/rv_log.h"
+//#include "retrovert_api/c/retrovert/rv_metadata.h"
+//#include "retrovert_api/c/retrovert/rv_playback_plugin.h"
+//#include "retrovert_api/c/retrovert/rv_service.h"
+//#include "retrovert_api/c/retrovert/rv_settings.h"
 
 #include <assert.h>
 #include <string.h>
@@ -18,8 +23,8 @@ const int MAX_EXT_COUNT = 16 * 1024;
 static char s_supported_extensions[MAX_EXT_COUNT];
 const char* PLUGIN_NAME = "libopenmpt";
 
-const RVIoAPI* g_io_api = nullptr;
-RVLogAPI* g_rv_log = nullptr;
+const RVIo* g_io_api = nullptr;
+RVLog* g_rv_log = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -93,7 +98,7 @@ static const RVSStringRangeValue s_amiga_filter_values[] = {
 // clang-format on
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static RVSSetting s_settings[] = {
+static RVSetting s_settings[] = {
     RVSBoolValue(ID_USE_AMIGA_RESAMPLER_AMIGA_MODS, "Use Amiga Resampler for Amiga modules",
                  "Set to enable the Amiga resampler for Amiga modules. This emulates the sound characteristics of "
                  "the Paula chip and overrides the selected interpolation filter. Non-Amiga module formats are not "
@@ -137,7 +142,7 @@ enum class Channels {
 
 struct OpenMptData {
     openmpt::module* mod = 0;
-    const RVMessageAPI* message_api;
+    // const RVMessageAPI* message_api;
     std::string ext;
     // number of channels to render
     Channels channels;
@@ -170,11 +175,11 @@ static const char* openmpt_supported_extensions() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void* openmpt_create(const RVServiceAPI* service_api) {
+static void* openmpt_create(const RVService* service_api) {
     OpenMptData* user_data = new OpenMptData;
 
-    g_io_api = RVServiceAPI_get_io_api(service_api, 1);
-    user_data->message_api = RVServiceAPI_get_message_api(service_api, 1);
+    g_io_api = RVService_get_io(service_api, 1);
+    // user_data->message_api = RVServiceAPI_get_message_api(service_api, 1);
 
     return (void*)user_data;
 }
@@ -189,7 +194,7 @@ static int openmpt_destroy(void* user_data) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static RVProbeResult openmpt_probe_can_play(const uint8_t* data, uint32_t data_size, const char* filename,
+static RVProbeResult openmpt_probe_can_play(uint8_t* data, uint64_t data_size, const char* filename,
                                             uint64_t total_size) {
     int res = openmpt::probe_file_header(openmpt::probe_file_header_flags_default2, data, data_size, total_size);
 
@@ -216,75 +221,76 @@ static RVProbeResult openmpt_probe_can_play(const uint8_t* data, uint32_t data_s
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void settings_apply(OpenMptData* data, const RVSettingsAPI* api) {
-    int int_value = 0;
-    float float_value = 0;
-    const char* str = nullptr;
-    bool bool_value = false;
+static void settings_apply(OpenMptData* data, const RVSettings* api) {
     const char* ext = data->ext.c_str();
 
-    if (RVSettings_get_int(api, ext, ID_SAMPLE_RATE, &int_value) == RVSettingsError_Ok) {
-        data->sample_rate = int_value;
+    RVSBoolResult bool_res = {};
+    RVSStringResult string_res = {};
+    RVSIntResult int_res = {};
+    RVSFloatResult float_res = {};
+
+    if ((int_res = RVSettings_get_int(api, ext, ID_SAMPLE_RATE)).result == RVSettingsResult_Ok) {
+        data->sample_rate = int_res.value;
     }
 
-    if (RVSettings_get_int(api, ext, ID_CHANNELS, &int_value) == RVSettingsError_Ok) {
-        data->channels = (Channels)int_value;
+    if ((int_res = RVSettings_get_int(api, ext, ID_CHANNELS)).result == RVSettingsResult_Ok) {
+        data->channels = (Channels)int_res.value;
     }
 
-    if (RVSettings_get_float(api, ext, ID_MASTER_GAIN, &float_value) == RVSettingsError_Ok) {
-        data->mod->set_render_param(openmpt::module::RENDER_MASTERGAIN_MILLIBEL, int(float_value * 1000));
+    if ((float_res = RVSettings_get_float(api, ext, ID_MASTER_GAIN)).result == RVSettingsResult_Ok) {
+        data->mod->set_render_param(openmpt::module::RENDER_MASTERGAIN_MILLIBEL, int(float_res.value * 1000));
     }
 
-    if (RVSettings_get_int(api, ext, ID_STEREO_SEPARATION, &int_value) == RVSettingsError_Ok) {
-        data->mod->set_render_param(openmpt::module::RENDER_STEREOSEPARATION_PERCENT, int_value);
+    if ((int_res = RVSettings_get_int(api, ext, ID_STEREO_SEPARATION)).result == RVSettingsResult_Ok) {
+        data->mod->set_render_param(openmpt::module::RENDER_STEREOSEPARATION_PERCENT, int_res.value);
     }
 
-    if (RVSettings_get_int(api, ext, ID_VOLUME_RAMPING, &int_value) == RVSettingsError_Ok) {
-        data->mod->set_render_param(openmpt::module::RENDER_VOLUMERAMPING_STRENGTH, int_value);
+    if ((int_res = RVSettings_get_int(api, ext, ID_VOLUME_RAMPING)).result == RVSettingsResult_Ok) {
+        data->mod->set_render_param(openmpt::module::RENDER_VOLUMERAMPING_STRENGTH, int_res.value);
     }
 
-    if (RVSettings_get_int(api, ext, ID_INTERPOLATION_RANGE, &int_value) == RVSettingsError_Ok) {
-        data->mod->set_render_param(openmpt::module::RENDER_INTERPOLATIONFILTER_LENGTH, int_value);
+    if ((int_res = RVSettings_get_int(api, ext, ID_INTERPOLATION_RANGE)).result == RVSettingsResult_Ok) {
+        data->mod->set_render_param(openmpt::module::RENDER_INTERPOLATIONFILTER_LENGTH, int_res.value);
     }
 
-    if (RVSettings_get_string(api, ext, ID_AMIGA_RESAMPLER_FILTER, &str) == RVSettingsError_Ok) {
-        data->mod->ctl_set_text("render.resampler.emulate_amiga_type", str);
+    if ((int_res = RVSettings_get_int(api, ext, ID_AMIGA_RESAMPLER_FILTER)).result == RVSettingsResult_Ok) {
+        data->mod->ctl_set_text("render.resampler.emulate_amiga_type", string_res.value);
     }
 
-    if (RVSettings_get_bool(api, ext, ID_USE_AMIGA_RESAMPLER_AMIGA_MODS, &bool_value) == RVSettingsError_Ok) {
-        data->mod->ctl_set_boolean("render.resampler.emulate_amiga", bool_value);
+    if ((bool_res = RVSettings_get_bool(api, ext, ID_USE_AMIGA_RESAMPLER_AMIGA_MODS)).result == RVSettingsResult_Ok) {
+        data->mod->ctl_set_boolean("render.resampler.emulate_amiga", bool_res.value);
     }
 
-    if (RVSettings_get_float(api, ext, ID_TEMPO_FACTOR, &float_value) == RVSettingsError_Ok) {
-        data->mod->ctl_set_floatingpoint("play.tempo_factor", float_value);
+    if ((float_res = RVSettings_get_float(api, ext, ID_TEMPO_FACTOR)).result == RVSettingsResult_Ok) {
+        data->mod->ctl_set_floatingpoint("play.tempo_factor", float_res.value);
     }
 
-    if (RVSettings_get_float(api, ext, ID_PITCH_FACTOR, &float_value) == RVSettingsError_Ok) {
-        data->mod->ctl_set_floatingpoint("play.pitch_factor", float_value);
+    if ((float_res = RVSettings_get_float(api, ext, ID_PITCH_FACTOR)).result == RVSettingsResult_Ok) {
+        data->mod->ctl_set_floatingpoint("play.pitch_factor", float_res.value);
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_open(void* user_data, const char* filename, int subsong, const RVSettingsAPI* settings) {
-    uint64_t size = 0;
+static int openmpt_open(void* user_data, const char* url, uint32_t subsong, const RVSettings* settings) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
+    RVIoReadUrlResult read_res;
 
-    RVIoErrorCode res = RVIo_read_file_to_memory(g_io_api, filename, &replayer_data->song_data, &size);
-
-    if (res < 0) {
-        rv_error("Failed to load %s to memory", filename);
+    if ((read_res = RVIo_read_url_to_memory(g_io_api, url)).data == nullptr) {
+        rv_error("Failed to load %s to memory", url);
         return -1;
     }
+
+    replayer_data->song_data = read_res.data;
 
     try {
-        replayer_data->mod = new openmpt::module(replayer_data->song_data, size);
+        replayer_data->mod = new openmpt::module(replayer_data->song_data, read_res.data_size);
     } catch (...) {
-        rv_error("Failed to open %s even if is as supported format", filename);
+        rv_error("Failed to open %s even if is as supported format", url);
         return -1;
     }
 
-    rv_info("Started to play %s (subsong %d)", filename, subsong);
+    rv_info("Started to play %s (subsong %d)", url, subsong);
 
     replayer_data->length = (float)replayer_data->mod->get_duration_seconds();
     replayer_data->mod->select_subsong(subsong);
@@ -296,17 +302,13 @@ static int openmpt_open(void* user_data, const char* filename, int subsong, cons
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_close(void* user_data) {
+void openmpt_close(void* user_data) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
 
-    if (g_io_api) {
-        RVIo_free_file_to_memory(g_io_api, replayer_data->song_data);
-    }
+    RVIo_free_url_to_memory(g_io_api, replayer_data->song_data);
 
     delete replayer_data->mod;
     delete replayer_data;
-
-    return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,7 +354,7 @@ static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_ou
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_seek(void* user_data, int ms) {
+static int64_t openmpt_seek(void* user_data, int64_t ms) {
     return 0;
 }
 
@@ -370,23 +372,21 @@ static const char* filename_from_path(const char* path) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_metadata(const char* filename, const RVServiceAPI* service_api) {
-    void* data = 0;
-    uint64_t size = 0;
+static int openmpt_metadata(const char* filename, const RVService* service_api) {
+    RVIoReadUrlResult read_res;
 
-    const RVIoAPI* io_api = RVServiceAPI_get_io_api(service_api, RV_FILE_API_VERSION);
-    const RVMetadataAPI* metadata_api = RVServiceAPI_get_metadata_api(service_api, RV_METADATA_API_VERSION);
+    const RVIo* io_api = RVService_get_io(service_api, RV_IO_API_VERSION);
+    const RVMetadata* metadata_api = RVService_get_metadata(service_api, RV_METADATA_API_VERSION);
 
-    RVIoErrorCode res = RVIo_read_file_to_memory(io_api, filename, &data, &size);
-
-    if (res < 0) {
-        return res;
+    if ((read_res = RVIo_read_url_to_memory(g_io_api, filename)).data == nullptr) {
+        rv_error("Failed to load %s to memory", filename);
+        return -1;
     }
 
     openmpt::module* mod = nullptr;
 
     try {
-        mod = new openmpt::module(data, size);
+        mod = new openmpt::module(read_res.data, read_res.data_size);
     } catch (...) {
         rv_error("Failed to open %s even if is as supported format", filename);
         return -1;
@@ -406,13 +406,13 @@ static int openmpt_metadata(const char* filename, const RVServiceAPI* service_ap
 
     rv_info("Updating meta data for %s", filename);
 
-    RVMetadata_set_tag(metadata_api, index, RVMetadata_TitleTag, title);
-    RVMetadata_set_tag(metadata_api, index, RVMetadata_SongTypeTag, mod->get_metadata("type_long").c_str());
-    RVMetadata_set_tag(metadata_api, index, RVMetadata_AuthoringToolTag, mod->get_metadata("tracker").c_str());
-    RVMetadata_set_tag(metadata_api, index, RVMetadata_ArtistTag, mod->get_metadata("artist").c_str());
-    RVMetadata_set_tag(metadata_api, index, RVMetadata_DateTag, mod->get_metadata("date").c_str());
-    RVMetadata_set_tag(metadata_api, index, RVMetadata_MessageTag, mod->get_metadata("message").c_str());
-    RVMetadata_set_tag_f64(metadata_api, index, RVMetadata_LengthTag, mod->get_duration_seconds());
+    RVMetadata_set_tag(metadata_api, index, RV_METADATA_TITLE_TAG, title);
+    RVMetadata_set_tag(metadata_api, index, RV_METADATA_SONGTYPE_TAG, mod->get_metadata("type_long").c_str());
+    RVMetadata_set_tag(metadata_api, index, RV_METADATA_AUTHORINGTOOL_TAG, mod->get_metadata("tracker").c_str());
+    RVMetadata_set_tag(metadata_api, index, RV_METADATA_ARTIST_TAG, mod->get_metadata("artist").c_str());
+    RVMetadata_set_tag(metadata_api, index, RV_METADATA_DATE_TAG, mod->get_metadata("date").c_str());
+    RVMetadata_set_tag(metadata_api, index, RV_METADATA_MESSAGE_TAG, mod->get_metadata("message").c_str());
+    RVMetadata_set_tag_f64(metadata_api, index, RV_METADATA_LENGTH_TAG, mod->get_duration_seconds());
 
     for (const auto& sample : mod->get_sample_names()) {
         RVMetadata_add_sample(metadata_api, index, sample.c_str());
@@ -427,30 +427,21 @@ static int openmpt_metadata(const char* filename, const RVServiceAPI* service_ap
     if (subsong_count > 1) {
         int i = 0;
         for (const auto& name : mod->get_subsong_names()) {
-            char subsong_name[1024] = {0};
-
-            if (name != "") {
-                sprintf(subsong_name, "%s - %s (%d/%d)", title, name.c_str(), i + 1, subsong_count);
-            } else {
-                sprintf(subsong_name, "%s (%d/%d)", title, i + 1, subsong_count);
-            }
-
             mod->select_subsong(i);
-            RVMetadata_add_subsong(metadata_api, index, i, subsong_name, (float)mod->get_duration_seconds());
-
+            RVMetadata_add_subsong(metadata_api, index, i, name.c_str(), (float)mod->get_duration_seconds());
             ++i;
         }
     }
 
     // Make sure to free the buffer before we leave
-    RVIo_free_file_to_memory(io_api, data);
+    RVIo_free_url_to_memory(io_api, read_res.data);
 
     return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void openmpt_event(void* user_data, const unsigned char* data, int len) {
+static void openmpt_event(void* user_data, uint8_t* data, uint64_t len) {
     (void)len;
     (void)user_data;
     (void)data;
@@ -458,7 +449,7 @@ static void openmpt_event(void* user_data, const unsigned char* data, int len) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static RVSettingsUpdate openmpt_settings_updated(void* user_data, const RVSettingsAPI* settings) {
+static RVSettingsUpdate openmpt_settings_updated(void* user_data, const RVSettings* settings) {
     settings_apply((OpenMptData*)user_data, settings);
 
     return RVSettingsUpdate_Default;
@@ -466,12 +457,12 @@ static RVSettingsUpdate openmpt_settings_updated(void* user_data, const RVSettin
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void openmpt_static_init(struct RVLogAPI* log, const RVServiceAPI* service_api) {
-    g_rv_log = log;
+static void openmpt_static_init(const RVLog* log, const RVService* service_api) {
+    g_rv_log = (RVLog*)log;
 
-    auto settings_api = RVServiceAPI_get_settings_api(service_api, RV_SETTINGS_API_VERSION);
+    const RVSettings* settings_api = RVService_get_settings(service_api, RV_SETTINGS_API_VERSION);
 
-    if (RVSettings_register(settings_api, PLUGIN_NAME, s_settings) != RVSettingsError_Ok) {
+    if (RVSettings_register_array(settings_api, PLUGIN_NAME, s_settings) != RVSettingsResult_Ok) {
         // rv_error("Unable to register settings, error: %s", RVSettings_get_last_error(api));
     }
 }
@@ -499,6 +490,10 @@ static RVPlaybackPlugin s_openmpt_plugin = {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if defined(RV_PLUGIN)
+
 extern "C" RV_EXPORT RVPlaybackPlugin* hippo_playback_plugin() {
     return &s_openmpt_plugin;
 }
+
+#endif
