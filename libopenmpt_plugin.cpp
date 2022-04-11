@@ -1,17 +1,12 @@
 #include <libopenmpt/libopenmpt.h>
 #include <libopenmpt/libopenmpt.hpp>
 
-#include <retrovert/gen/io.h>
-#include <retrovert/gen/log.h>
-#include <retrovert/gen/metadata.h>
-#include <retrovert/gen/playback.h>
-#include <retrovert/gen/service.h>
-#include <retrovert/gen/settings.h>
-//#include "retrovert_api/c/retrovert/rv_log.h"
-//#include "retrovert_api/c/retrovert/rv_metadata.h"
-//#include "retrovert_api/c/retrovert/rv_playback_plugin.h"
-//#include "retrovert_api/c/retrovert/rv_service.h"
-//#include "retrovert_api/c/retrovert/rv_settings.h"
+#include <retrovert/io.h>
+#include <retrovert/log.h>
+#include <retrovert/metadata.h>
+#include <retrovert/playback.h>
+#include <retrovert/service.h>
+#include <retrovert/settings.h>
 
 #include <assert.h>
 #include <string.h>
@@ -492,7 +487,7 @@ static RVPlaybackPlugin s_openmpt_plugin = {
 
 #if defined(RV_PLUGIN)
 
-extern "C" RV_EXPORT RVPlaybackPlugin* hippo_playback_plugin() {
+extern "C" RV_EXPORT RVPlaybackPlugin* rv_playback_plugin() {
     return &s_openmpt_plugin;
 }
 
