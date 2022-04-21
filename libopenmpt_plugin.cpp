@@ -19,7 +19,7 @@ static char s_supported_extensions[MAX_EXT_COUNT];
 const char* PLUGIN_NAME = "libopenmpt";
 
 const RVIo* g_io_api = nullptr;
-RVLog* g_rv_log = nullptr;
+const RVLog* g_rv_log = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -344,7 +344,7 @@ static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_ou
         }
     }
 
-    return RVReadInfo{sample_rate, gen_count, channel_count, RVOutputType_f32};
+    return RVReadInfo{sample_rate, gen_count, channel_count, RVOutputType_F32};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -452,8 +452,8 @@ static RVSettingsUpdate openmpt_settings_updated(void* user_data, const RVSettin
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void openmpt_static_init(const RVLog* log, const RVService* service_api) {
-    g_rv_log = (RVLog*)log;
+static void openmpt_static_init(const RVService* service_api) {
+    g_rv_log = RVService_get_log(service_api, RV_LOG_API_VERSION);
 
     const RVSettings* settings_api = RVService_get_settings(service_api, RV_SETTINGS_API_VERSION);
 
@@ -485,10 +485,10 @@ static RVPlaybackPlugin s_openmpt_plugin = {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(RV_PLUGIN)
+//#if defined(RV_PLUGIN)
 
 extern "C" RV_EXPORT RVPlaybackPlugin* rv_playback_plugin() {
     return &s_openmpt_plugin;
 }
 
-#endif
+//#endif
