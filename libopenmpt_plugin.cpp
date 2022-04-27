@@ -308,10 +308,12 @@ void openmpt_close(void* user_data) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_output_bytes, uint32_t sample_rate) {
+// static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_output_bytes, uint32_t sample_rate) {
+static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
+    uint32_t sample_rate = dest.info.sample_rate;
 
-    const int samples_to_generate = std::min(uint32_t(512), max_output_bytes / 8);
+    const int samples_to_generate = std::min(uint32_t(512), dest.channels_output_max_bytes_size / 8);
 
     // support overringing the default sample rate
     if (replayer_data->sample_rate != 0) {
@@ -325,26 +327,27 @@ static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_ou
         default:
         case Channels::Stereo:
         case Channels::Default: {
-            gen_count =
-                (uint16_t)replayer_data->mod->read_interleaved_stereo(sample_rate, samples_to_generate, (float*)dest);
+            gen_count = (uint16_t)replayer_data->mod->read_interleaved_stereo(sample_rate, samples_to_generate,
+                                                                              (float*)dest.channels_output);
             break;
         }
 
         case Channels::Mono: {
-            gen_count = (uint16_t)replayer_data->mod->read(sample_rate, samples_to_generate, (float*)dest);
+            gen_count =
+                (uint16_t)replayer_data->mod->read(sample_rate, samples_to_generate, (float*)dest.channels_output);
             channel_count = 1;
             break;
         }
 
         case Channels::Quad: {
-            gen_count =
-                (uint16_t)replayer_data->mod->read_interleaved_quad(sample_rate, samples_to_generate, (float*)dest);
+            gen_count = (uint16_t)replayer_data->mod->read_interleaved_quad(sample_rate, samples_to_generate,
+                                                                            (float*)dest.channels_output);
             channel_count = 4;
             break;
         }
     }
 
-    return RVReadInfo{sample_rate, gen_count, channel_count, RVOutputType_F32};
+    return RVReadInfo{sample_rate, gen_count, channel_count, 0, RVOutputType_F32};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
