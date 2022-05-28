@@ -42,6 +42,10 @@ local macosx = {
 		},
     },
 
+    ReplaceEnv = {
+        HOSTSHLIBSUFFIX = ".rvp",
+    },
+
     Frameworks = {
         { "Cocoa" },
         { "Metal" },
@@ -88,6 +92,7 @@ local gcc_env = {
 
     ReplaceEnv = {
         LD = "c++",
+        HOSTSHLIBSUFFIX = ".rvp",
     },
 }
 
@@ -114,6 +119,8 @@ local win64 = {
             win64_opts,
         },
 
+        HOSTSHLIBSUFFIX = ".rvp",
+
         CXXOPTS = {
             win64_opts,
             "\"/DRV_VERSION=$(RV_VERSION:#)\"",
@@ -121,6 +128,10 @@ local win64 = {
         },
 
         OBJCCOM = "meh",
+    },
+
+    ReplaceEnv = {
+        HOSTSHLIBSUFFIX = ".rvp",
     },
 }
 

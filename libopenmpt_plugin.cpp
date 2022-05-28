@@ -224,43 +224,45 @@ static void settings_apply(OpenMptData* data, const RVSettings* api) {
     RVSIntResult int_res = {};
     RVSFloatResult float_res = {};
 
-    if ((int_res = RVSettings_get_int(api, ext, ID_SAMPLE_RATE)).result == RVSettingsResult_Ok) {
+    if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_SAMPLE_RATE)).result == RVSettingsResult_Ok) {
         data->sample_rate = int_res.value;
     }
 
-    if ((int_res = RVSettings_get_int(api, ext, ID_CHANNELS)).result == RVSettingsResult_Ok) {
+    if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_CHANNELS)).result == RVSettingsResult_Ok) {
         data->channels = (Channels)int_res.value;
     }
 
-    if ((float_res = RVSettings_get_float(api, ext, ID_MASTER_GAIN)).result == RVSettingsResult_Ok) {
+    if ((float_res = RVSettings_get_float(api, PLUGIN_NAME, ext, ID_MASTER_GAIN)).result == RVSettingsResult_Ok) {
         data->mod->set_render_param(openmpt::module::RENDER_MASTERGAIN_MILLIBEL, int(float_res.value * 1000));
     }
 
-    if ((int_res = RVSettings_get_int(api, ext, ID_STEREO_SEPARATION)).result == RVSettingsResult_Ok) {
+    if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_STEREO_SEPARATION)).result == RVSettingsResult_Ok) {
         data->mod->set_render_param(openmpt::module::RENDER_STEREOSEPARATION_PERCENT, int_res.value);
     }
 
-    if ((int_res = RVSettings_get_int(api, ext, ID_VOLUME_RAMPING)).result == RVSettingsResult_Ok) {
+    if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_VOLUME_RAMPING)).result == RVSettingsResult_Ok) {
         data->mod->set_render_param(openmpt::module::RENDER_VOLUMERAMPING_STRENGTH, int_res.value);
     }
 
-    if ((int_res = RVSettings_get_int(api, ext, ID_INTERPOLATION_RANGE)).result == RVSettingsResult_Ok) {
+    if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_INTERPOLATION_RANGE)).result == RVSettingsResult_Ok) {
         data->mod->set_render_param(openmpt::module::RENDER_INTERPOLATIONFILTER_LENGTH, int_res.value);
     }
 
-    if ((int_res = RVSettings_get_int(api, ext, ID_AMIGA_RESAMPLER_FILTER)).result == RVSettingsResult_Ok) {
+    if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_AMIGA_RESAMPLER_FILTER)).result ==
+        RVSettingsResult_Ok) {
         data->mod->ctl_set_text("render.resampler.emulate_amiga_type", string_res.value);
     }
 
-    if ((bool_res = RVSettings_get_bool(api, ext, ID_USE_AMIGA_RESAMPLER_AMIGA_MODS)).result == RVSettingsResult_Ok) {
+    if ((bool_res = RVSettings_get_bool(api, PLUGIN_NAME, ext, ID_USE_AMIGA_RESAMPLER_AMIGA_MODS)).result ==
+        RVSettingsResult_Ok) {
         data->mod->ctl_set_boolean("render.resampler.emulate_amiga", bool_res.value);
     }
 
-    if ((float_res = RVSettings_get_float(api, ext, ID_TEMPO_FACTOR)).result == RVSettingsResult_Ok) {
+    if ((float_res = RVSettings_get_float(api, PLUGIN_NAME, ext, ID_TEMPO_FACTOR)).result == RVSettingsResult_Ok) {
         data->mod->ctl_set_floatingpoint("play.tempo_factor", float_res.value);
     }
 
-    if ((float_res = RVSettings_get_float(api, ext, ID_PITCH_FACTOR)).result == RVSettingsResult_Ok) {
+    if ((float_res = RVSettings_get_float(api, PLUGIN_NAME, ext, ID_PITCH_FACTOR)).result == RVSettingsResult_Ok) {
         data->mod->ctl_set_floatingpoint("play.pitch_factor", float_res.value);
     }
 }
@@ -347,7 +349,7 @@ static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
         }
     }
 
-    return RVReadInfo{sample_rate, gen_count, channel_count, 0, RVOutputType_F32};
+    return RVReadInfo{sample_rate, gen_count, RVReadStatus_Ok, 0, channel_count, RVOutputType_F32};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
