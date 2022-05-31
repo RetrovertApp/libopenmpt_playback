@@ -27,7 +27,7 @@ SharedLibrary {
     },
 
 	Includes = {
-	    "../retrovert_api/c",
+	    "retrovert_api/c",
 		"libopenmpt",
 		"libopenmpt/src",
 		"libopenmpt/common"

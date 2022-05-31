@@ -1,6 +1,7 @@
 #include <libopenmpt/libopenmpt.h>
 #include <libopenmpt/libopenmpt.hpp>
 
+#include <retrovert/audio_format.h>
 #include <retrovert/io.h>
 #include <retrovert/log.h>
 #include <retrovert/metadata.h>
@@ -349,7 +350,7 @@ static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
         }
     }
 
-    return RVReadInfo{sample_rate, gen_count, RVReadStatus_Ok, 0, channel_count, RVOutputType_F32};
+    return RVReadInfo{sample_rate, gen_count, RVReadStatus_Ok, 0, channel_count, RVAudioStreamFormat_F32};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
