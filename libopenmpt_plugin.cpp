@@ -225,6 +225,9 @@ static void settings_apply(OpenMptData* data, const RVSettings* api) {
     RVSIntResult int_res = {};
     RVSFloatResult float_res = {};
 
+    data->channels = (Channels)Channels::Stereo;
+
+    /*
     if ((int_res = RVSettings_get_int(api, PLUGIN_NAME, ext, ID_SAMPLE_RATE)).result == RVSettingsResult_Ok) {
         data->sample_rate = int_res.value;
     }
@@ -266,29 +269,24 @@ static void settings_apply(OpenMptData* data, const RVSettings* api) {
     if ((float_res = RVSettings_get_float(api, PLUGIN_NAME, ext, ID_PITCH_FACTOR)).result == RVSettingsResult_Ok) {
         data->mod->ctl_set_floatingpoint("play.pitch_factor", float_res.value);
     }
+    */
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_open(void* user_data, const char* url, uint32_t subsong, const RVSettings* settings) {
+static int openmpt_open_from_memory(void* user_data, uint8_t* buffer, uint64_t size, uint32_t subsong,
+                                    const RVSettings* settings) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
-    RVIoReadUrlResult read_res;
-
-    if ((read_res = RVIo_read_url_to_memory(g_io_api, url)).data == nullptr) {
-        rv_error("Failed to load %s to memory", url);
-        return -1;
-    }
-
-    replayer_data->song_data = read_res.data;
 
     try {
-        replayer_data->mod = new openmpt::module(replayer_data->song_data, read_res.data_size);
+        replayer_data->mod = new openmpt::module(buffer, size);
     } catch (...) {
-        rv_error("Failed to open %s even if is as supported format", url);
         return -1;
     }
 
-    rv_info("Started to play %s (subsong %d)", url, subsong);
+    rv_info("playback started");
+
+    // rv_info("Started to play %s (subsong %d)", url, subsong);
 
     replayer_data->length = (float)replayer_data->mod->get_duration_seconds();
     replayer_data->mod->select_subsong(subsong);
@@ -300,10 +298,23 @@ static int openmpt_open(void* user_data, const char* url, uint32_t subsong, cons
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static int openmpt_open(void* user_data, const char* url, uint32_t subsong, const RVSettings* settings) {
+    RVIoReadUrlResult read_res;
+
+    if ((read_res = RVIo_read_url_to_memory(g_io_api, url)).data == nullptr) {
+        rv_error("Failed to load %s to memory", url);
+        return -1;
+    }
+
+    return openmpt_open_from_memory(user_data, read_res.data, read_res.data_size, subsong, settings);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void openmpt_close(void* user_data) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
 
-    RVIo_free_url_to_memory(g_io_api, replayer_data->song_data);
+    // RVIo_free_url_to_memory(g_io_api, replayer_data->song_data);
 
     delete replayer_data->mod;
     delete replayer_data;
@@ -314,14 +325,19 @@ void openmpt_close(void* user_data) {
 // static RVReadInfo openmpt_read_data(void* user_data, void* dest, uint32_t max_output_bytes, uint32_t sample_rate) {
 static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
-    uint32_t sample_rate = dest.info.sample_rate;
+    // uint32_t sample_rate = dest.info.sample_rate;
+    uint32_t sample_rate = dest.info.format.sample_rate;
 
     const int samples_to_generate = std::min(uint32_t(512), dest.channels_output_max_bytes_size / 8);
+
+    rv_debug("samples to generate %d\n", samples_to_generate);
 
     // support overringing the default sample rate
     if (replayer_data->sample_rate != 0) {
         sample_rate = replayer_data->sample_rate;
     }
+
+    sample_rate = 48000;
 
     uint8_t channel_count = 2;
     uint16_t gen_count = 0;
@@ -350,7 +366,8 @@ static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
         }
     }
 
-    return RVReadInfo{sample_rate, gen_count, RVReadStatus_Ok, 0, channel_count, RVAudioStreamFormat_F32};
+    RVAudioFormat format = {RVAudioStreamFormat_F32, channel_count, sample_rate};
+    return RVReadInfo{format, gen_count, RVReadStatus_Ok, 0};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -481,6 +498,7 @@ static RVPlaybackPlugin s_openmpt_plugin = {
     openmpt_destroy,
     openmpt_event,
     openmpt_open,
+    openmpt_open_from_memory,
     openmpt_close,
     openmpt_read_data,
     openmpt_seek,

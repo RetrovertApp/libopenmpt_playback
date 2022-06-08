@@ -36,9 +36,10 @@ typedef struct RVResamplePlugin {
     // Destroy the instance of the plugin. It's expected that the user will free the user_data pointer at
     // this point as it won't be used anymore.
     int (*destroy)(void* user_data);
-    void* (*set_config)(const RVConvertConfig* format);
-    void (*convert)(void* output_data, void* input_data, uint32_t input_frame_count);
-    uint32_t (*get_expected_output_frame_count)(uint32_t frame_count);
+    void (*set_config)(void* user_data, const RVConvertConfig* format);
+    uint32_t (*convert)(void* user_data, void* output_data, void* input_data, uint32_t input_frame_count);
+    uint32_t (*get_expected_output_frame_count)(void* user_data, uint32_t frame_count);
+    uint32_t (*get_required_input_frame_count)(void* user_data, uint32_t frame_count);
     // Called once for each plugin. This allows the plugin to setup an instance of the logging api
     void (*static_init)(const RVService* services);
     // Called when the user has changed some settings
