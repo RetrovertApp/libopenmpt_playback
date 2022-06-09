@@ -225,6 +225,7 @@ static void settings_apply(OpenMptData* data, const RVSettings* api) {
     RVSIntResult int_res = {};
     RVSFloatResult float_res = {};
 
+    // data->channels = (Channels)Channels::Mono;
     data->channels = (Channels)Channels::Stereo;
 
     /*
@@ -329,8 +330,6 @@ static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
     uint32_t sample_rate = dest.info.format.sample_rate;
 
     const int samples_to_generate = std::min(uint32_t(512), dest.channels_output_max_bytes_size / 8);
-
-    rv_debug("samples to generate %d\n", samples_to_generate);
 
     // support overringing the default sample rate
     if (replayer_data->sample_rate != 0) {
