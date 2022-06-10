@@ -366,7 +366,7 @@ static RVReadInfo openmpt_read_data(void* user_data, RVReadData dest) {
     }
 
     RVAudioFormat format = {RVAudioStreamFormat_F32, channel_count, sample_rate};
-    return RVReadInfo{format, gen_count, RVReadStatus_Ok, 0};
+    return RVReadInfo{format, gen_count, gen_count == 512 ? RVReadStatus_Ok : RVReadStatus_Finished, 0};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
