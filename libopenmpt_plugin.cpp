@@ -275,12 +275,18 @@ static void settings_apply(OpenMptData* data, const RVSettings* api) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_open_from_memory(void* user_data, uint8_t* buffer, uint64_t size, uint32_t subsong,
-                                    const RVSettings* settings) {
+static int openmpt_open(void* user_data, const char* url, uint32_t subsong, const RVSettings* settings) {
+    RVIoReadUrlResult read_res;
+
+    if ((read_res = RVIo_read_url_to_memory(g_io_api, url)).data == nullptr) {
+        rv_error("Failed to load %s to memory", url);
+        return -1;
+    }
+
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
 
     try {
-        replayer_data->mod = new openmpt::module(buffer, size);
+        replayer_data->mod = new openmpt::module(read_res.data, read_res.data_size);
     } catch (...) {
         return -1;
     }
@@ -299,23 +305,8 @@ static int openmpt_open_from_memory(void* user_data, uint8_t* buffer, uint64_t s
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int openmpt_open(void* user_data, const char* url, uint32_t subsong, const RVSettings* settings) {
-    RVIoReadUrlResult read_res;
-
-    if ((read_res = RVIo_read_url_to_memory(g_io_api, url)).data == nullptr) {
-        rv_error("Failed to load %s to memory", url);
-        return -1;
-    }
-
-    return openmpt_open_from_memory(user_data, read_res.data, read_res.data_size, subsong, settings);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 void openmpt_close(void* user_data) {
     struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
-
-    // RVIo_free_url_to_memory(g_io_api, replayer_data->song_data);
 
     delete replayer_data->mod;
     delete replayer_data;
@@ -379,7 +370,7 @@ static int64_t openmpt_seek(void* user_data, int64_t ms) {
 
 static const char* filename_from_path(const char* path) {
     for (size_t i = strlen(path) - 1; i > 0; i--) {
-        if (path[i] == '/') {
+        if (path[i] == '/' || path[i] == '\\') {
             return &path[i + 1];
         }
     }
@@ -497,7 +488,6 @@ static RVPlaybackPlugin s_openmpt_plugin = {
     openmpt_destroy,
     openmpt_event,
     openmpt_open,
-    openmpt_open_from_memory,
     openmpt_close,
     openmpt_read_data,
     openmpt_seek,
