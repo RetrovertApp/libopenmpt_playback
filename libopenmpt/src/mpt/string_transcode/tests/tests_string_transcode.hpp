@@ -7,10 +7,14 @@
 
 #include "mpt/base/detect.hpp"
 #include "mpt/base/namespace.hpp"
+#include "mpt/string/types.hpp"
 #include "mpt/string_transcode/macros.hpp"
 #include "mpt/string_transcode/transcode.hpp"
 #include "mpt/test/test.hpp"
 #include "mpt/test/test_macros.hpp"
+
+#include <string>
+#include <string_view>
 
 
 
@@ -20,7 +24,7 @@ inline namespace MPT_INLINE_NS {
 
 
 namespace tests {
-namespace string_convert {
+namespace string_transcode {
 
 #if MPT_COMPILER_CLANG
 #pragma clang diagnostic push
@@ -231,9 +235,17 @@ MPT_TEST_GROUP_INLINE("mpt/string_transcode")
 #endif
 
 #endif // !MPT_COMPILER_QUIRK_NO_WCHAR
+
+	// string_view
+	MPT_TEST_EXPECT_EQUAL(mpt::transcode<mpt::ustring>(U"foo"), MPT_USTRING("foo"));
+	MPT_TEST_EXPECT_EQUAL(mpt::transcode<mpt::ustring>(std::u32string_view(U"foo")), MPT_USTRING("foo"));
+	MPT_TEST_EXPECT_EQUAL(mpt::transcode<mpt::ustring>(std::u32string(U"foo")), MPT_USTRING("foo"));
+
+	// bogus unknown -> unknown transcode
+	MPT_TEST_EXPECT_EQUAL(mpt::transcode<std::string>(std::string("foo")), std::string("foo"));
 }
 
-} // namespace string_convert
+} // namespace string_transcode
 } // namespace tests
 
 

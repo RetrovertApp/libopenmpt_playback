@@ -33,9 +33,11 @@ private:
 
 public:
 	FileDataMemory()
-		: streamData(nullptr), streamLength(0) { }
+		: streamData(nullptr)
+		, streamLength(0) { }
 	FileDataMemory(mpt::const_byte_span data)
-		: streamData(data.data()), streamLength(data.size()) { }
+		: streamData(data.data())
+		, streamLength(data.size()) { }
 
 public:
 	bool IsValid() const override {
@@ -67,7 +69,7 @@ public:
 		return dst.first(avail);
 	}
 
-	bool CanRead(pos_type pos, std::size_t length) const override {
+	bool CanRead(pos_type pos, pos_type length) const override {
 		if ((pos == streamLength) && (length == 0)) {
 			return true;
 		}
@@ -77,7 +79,7 @@ public:
 		return (length <= streamLength - pos);
 	}
 
-	std::size_t GetReadableLength(pos_type pos, std::size_t length) const override {
+	pos_type GetReadableLength(pos_type pos, pos_type length) const override {
 		if (pos >= streamLength) {
 			return 0;
 		}

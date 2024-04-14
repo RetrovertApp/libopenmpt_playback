@@ -474,8 +474,8 @@ static void openmpt_static_init(const RVService* service_api) {
 static RVPlaybackPlugin s_openmpt_plugin = {
     RV_PLAYBACK_PLUGIN_API_VERSION,
     PLUGIN_NAME,
-    "0.0.2",
-    "libopenmpt 0.6.2",
+    "0.0.3",
+    "libopenmpt 0.7.6",
     openmpt_probe_can_play,
     openmpt_supported_extensions,
     openmpt_create,
