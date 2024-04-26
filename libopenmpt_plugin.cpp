@@ -441,6 +441,28 @@ static int openmpt_metadata(const char* filename, const RVService* service_api) 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void openmpt_event(void* user_data, uint8_t* data, uint64_t len) {
+    struct OpenMptData* replayer_data = (struct OpenMptData*)user_data;
+
+    int current_pattern = replayer_data->mod->get_current_pattern();
+    int current_row = replayer_data->mod->get_current_row();
+    int channel_vol_0 = int(replayer_data->mod->get_current_channel_vu_mono(0) * 255.0f);
+    int channel_vol_1 = int(replayer_data->mod->get_current_channel_vu_mono(1) * 255.0f);
+    int channel_vol_2 = int(replayer_data->mod->get_current_channel_vu_mono(2) * 255.0f);
+    int channel_vol_3 = int(replayer_data->mod->get_current_channel_vu_mono(3) * 255.0f);
+
+    //printf("vols %d %d %d %d\n", channel_vol_0, channel_vol_1, channel_vol_2, channel_vol_3);
+    //printf("current_pattern %d\n", current_pattern);
+    //printf("current_row %d\n", current_row);
+
+    data[7] = current_pattern & 0xFF; 
+    data[6] = current_row & 0xFF; 
+    data[5] = 0;//(comb_position >> 16) & 0xFF;
+    data[4] = 0;//(comb_position >> 24) & 0xFF;
+    data[3] = channel_vol_0;
+    data[2] = channel_vol_1;
+    data[1] = channel_vol_2;
+    data[0] = channel_vol_3;
+
     (void)len;
     (void)user_data;
     (void)data;
